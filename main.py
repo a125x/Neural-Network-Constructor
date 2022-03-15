@@ -29,7 +29,7 @@ def correct_value(x):
 
 class NeuralNetwork:
 
-    # Constructor
+    #сonstructor
     def __init__(self, layers_list):
 
         #
@@ -54,7 +54,7 @@ class NeuralNetwork:
             self.weights.append(np.random.random((layers_list[i], layers_list[i + 1])))
             self.biases.append(np.random.random((layers_list[i + 1], 1)))
 
-    # learning
+    #learning
     def train(self, alpha, trainings):
 
         #refreshing
@@ -113,7 +113,7 @@ class NeuralNetwork:
             self.err_list.append(err)
 
     #random input
-    def show_random(self):
+    def show_random_test(self):
 
         input = np.random.random((self.layers_list[0], 1)).T
         output = self.calculate(input)
@@ -125,11 +125,8 @@ class NeuralNetwork:
         print('Correct output: ' + str(y))
         print('Error: ' + str(err))
 
-        plt.plot(self.err_list)
-        plt.show()
-
     #determined input
-    def show(self, input):
+    def show_determined_test(self, input):
 
         output = self.calculate(input)
         y = correct_value(input)
@@ -140,6 +137,7 @@ class NeuralNetwork:
         print('Correct output: ' + str(y))
         print('Error: ' + str(err))
 
+    def show_error(self):
         plt.plot(self.err_list)
         plt.show()
 
@@ -163,12 +161,15 @@ class NeuralNetwork:
 
         return output
         
-layers = [3, 10, 7, 5, 1]
-input = [1, 2, 3]
+layers = [2, 5, 5, 1]
+input = [3, 5]
 alpha = 0.001
-trainings = 30000
+trainings = 10000
 
 model = NeuralNetwork(layers)
-model.show(input)
 model.train(alpha, trainings)
-model.show(input)
+
+for i in range(10):
+    model.show_random_test()
+#model.show_determined_test(input)
+model.show_error()
