@@ -7,11 +7,15 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 import random
 
+#important: I use d_var as the name of derivative, not differential
+
 #normalization function
 def softmax(x):
-    expo = np.exp(x)
-    expo_sum = np.sum(np.exp(x))
-    return expo/expo_sum
+    out = np.exp(x)
+    return out / np.sum(out, axis=1, keepdims=True)
+ #   expo = np.exp(x)
+ #   expo_sum = np.sum(np.exp(x))
+ #   return expo / expo_sum
 
 #activation functions and their derivatives
 def relu(x):
@@ -40,8 +44,9 @@ def mse(output, y):
         err += np.sum(np.square(output[j] - y[j]))
     return np.array(err)
 
+#doesn't really work... I should learn about it more
 def cross_entropy(output, y):
-    pass
+    return np.sum(-np.log(np.array([output[j, y[j]] for j in range(len(y))])))
 
 def d_mse(output, y):
     d_error = []
@@ -50,9 +55,11 @@ def d_mse(output, y):
     return np.array(d_error)
 
 def d_cross_entropy(output, y):
-    pass
+    d_error = []
+    for j in range(len(output)):
+        d_error.append(2 * (output[j] - y[j]))
+    return np.array(d_error)
 
-#warning: here i use d_var as the name of derivative, not differential
 class NeuralNetwork:
 
     #сonstructor
@@ -72,12 +79,14 @@ class NeuralNetwork:
         self.biases = []
         self.activation = activation
         self.loss = loss
+        self.normalize = normalize
 
         #optimal type of weights & biases initialization
         for i in range(len(layers_list) - 1):
             self.weights.append((np.random.rand(layers_list[i], layers_list[i + 1]) - 0.5) * 2 * np.sqrt(1 / layers_list[i]))
             self.biases.append((np.random.rand(layers_list[i + 1], 1) - 0.5) * 2 * np.sqrt(1 / layers_list[i]))
         
+    #activation
     def __activation__(self, x):
         if self.activation == 'relu':
             return relu(x)
@@ -106,6 +115,11 @@ class NeuralNetwork:
             return d_mse(output, y)
         elif self.loss == 'cross entropy':
             return d_cross_entropy(output, y)
+
+    #normalize
+    def __normalize__(self, x):
+        if self.normalize == 'softmax':
+            return softmax(x)
 
     #functions for training
     def __train_refreshing__(self):
@@ -165,7 +179,10 @@ class NeuralNetwork:
             temp = self.__activation__(temp @ self.weights[i] + self.biases[i].T)
             self.h.append(temp)
 
-        output = temp @ self.weights[len(self.weights) - 1] + self.biases[len(self.biases) - 1].T
+        if self.normalize is not None:
+            output = self.__normalize__(temp @ self.weights[-1] + self.biases[-1].T)
+        else:
+            output = temp @ self.weights[-1] + self.biases[-1].T
         self.t.append(output)
         self.h.append(output)
 
@@ -265,7 +282,10 @@ class NeuralNetwork:
         for i in range(len(self.weights) - 1):
             temp = self.__activation__(temp @ self.weights[i] + self.biases[i].T)
 
-        output = temp @ self.weights[-1] + self.biases[-1].T
+        if self.normalize is not None:
+            output = self.__normalize__(temp @ self.weights[-1] + self.biases[-1].T)
+        else:
+            output = temp @ self.weights[-1] + self.biases[-1].T
 
         return output
 
@@ -348,7 +368,7 @@ trainings = len(dataset_training) //  batch_size
 epochs = 1000
 
 #creating and training the model
-model = NeuralNetwork(layers, 'tanh', 'mse')
+model = NeuralNetwork(layers, 'tanh', 'mse', 'softmax')
 model.train(alpha, trainings, epochs, batch_size, dataset_training, test_dataset)
 
 #testing our model using test dataset
