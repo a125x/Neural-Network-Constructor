@@ -1,7 +1,9 @@
 {
   "ExpandedNodes": [
-    ""
+    "",
+    "\\Class",
+    "\\Tests"
   ],
-  "SelectedNode": "\\main.py",
+  "SelectedNode": "\\Class\\NeuralNetworksClass.py",
   "PreviewInSolutionExplorer": false
 }

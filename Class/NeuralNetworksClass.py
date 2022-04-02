@@ -75,6 +75,7 @@ class NeuralNetworks:
         self.weights = []
         self.biases = []
         self.activation = activation
+        self.type = type
         if type == 'classification':
             self.loss = 'cross entropy'
             self.normalize = 'softmax'
@@ -247,32 +248,40 @@ class NeuralNetworks:
                 #error calculation and appending to the error list
 
                 #test data calculation
+                
                 if test_dataset is not None:
+                    if self.type == 'regression':
+                        test_batch_x, test_batch_y = zip(
+                            *test_dataset[
+                                j // trainings * len(test_dataset) : 
+                                j // trainings * len(test_dataset) 
+                                + len(test_dataset)])
+ 
+                        test_input = np.concatenate(test_batch_x, axis=0)
+                        test_y = []
 
-                    test_batch_x, test_batch_y = zip(
-                        *test_dataset[
-                            j // trainings * len(test_dataset) : 
-                            j // trainings * len(test_dataset) 
-                            + len(test_dataset)])
+                        for i in test_batch_y:
+                            test_y.append([i])
+                        test_y = np.array(test_batch_y)
 
-                    test_input = np.concatenate(test_batch_x, axis=0)
-                    test_y = []
+                        test_output = self.calculate(test_input)
 
-                    for i in test_batch_y:
-                        test_y.append([i])
-                    test_y = np.array(test_batch_y)
+                        #test error calculation and adding 
+                        #average error per item in the error list
+                        err_test = self.__error__(test_output, test_y)
+                        self.test_err_list.append(
+                            err_test / len(test_dataset))
 
-                    test_output = self.calculate(test_input)
-
-                    #test error calculation and adding 
-                    #average error per item in the error list
-                    err_test = self.__error__(test_output, test_y)
-                    self.test_err_list.append(err_test / len(test_dataset))
+                    elif self.type == 'classification':
+                        self.test_err_list.append(self.accuracy(test_dataset))
 
                 #train error calculation and adding 
                 #average error per item in the error list
                 err_train = self.__error__(output, y)
-                self.train_err_list.append(err_train / len(dataset))
+                if self.type == 'regression':
+                    self.train_err_list.append(err_train / len(dataset))
+                elif self.type == 'classification':
+                    self.train_err_list.append(self.accuracy(dataset))
 
                 #backward
                 self.__backward__(output, y, err_train)
@@ -280,35 +289,80 @@ class NeuralNetworks:
                 #update
                 self.__update__()
 
+    #prediction accuracy calculating
+    def accuracy(self, dataset):
+        correct_answers = 0
+        for x_test, y_test in dataset:
+            out_test = self.calculate(x_test)
+            y_pred = np.argmax(out_test)
+            if y_pred == np.argmax(y_test):
+                correct_answers += 1
+        return correct_answers / len(dataset)
+
+
     #determined input test
     def show_determined_test(self, input = None, dataset_i = None):
 
-        if dataset_i is not None:
-            input = dataset_i[0]
-            y = [dataset_i[1]]
-            output = self.calculate(input)
+        if self.type == 'classification':
 
-            err = self.__error__(output, y)
-        else:
-            output = self.calculate(input)
-            y = self.__correct_value__(input)
+            if dataset_i is not None:
+                input = dataset_i[0]
+                y = [dataset_i[1]]
+                output = self.calculate(input)
 
-            err = self.__error__(output, y)
+                err = self.__error__(output, y)
+                
+                y = np.argmax(y)
+                output = np.argmax(output)
+            else:
+                output = self.calculate(input)
+                y = self.__correct_value__(input)
 
-        print('Neural network output: ' + str(output))
-        print('Correct output: ' + str(y))
-        print('Error: ' + str(err))
+                err = self.__error__(output, y)
+                
+                y = np.argmax(y)
+                output = np.argmax(output)
+
+            print('Neural network output (cleared): ' + str(output))
+            print('Correct output (cleared): ' + str(y))
+            print('Cross-entropy before clearing: ' + str(err))
+
+        elif self.type == 'regression':
+
+            if dataset_i is not None:
+                input = dataset_i[0]
+                y = [dataset_i[1]]
+                output = self.calculate(input)
+
+                err = self.__error__(output, y)
+            else:
+                output = self.calculate(input)
+                y = self.__correct_value__(input)
+
+                err = self.__error__(output, y)
+
+            print('Neural network output: ' + str(output))
+            print('Correct output: ' + str(y))
+            print('Error: ' + str(err))
 
     #average error
     def show_error(self):
         fig, ax = plt.subplots()
-        ax.plot(self.train_err_list, label='Train error')
-        ax.plot(self.test_err_list, label='Test error')
+        if self.type == 'regression':
+            ax.plot(self.train_err_list, label='Train error')
+            ax.plot(self.test_err_list, label='Test error')
+            plt.suptitle('Average error per item in batch')
+            plt.xlabel('Trainings')
+            plt.ylabel('Error')
+        elif self.type == 'classification':
+            ax.plot(self.train_err_list, label='Train accuracy')
+            ax.plot(self.test_err_list, label='Test accuracy')
+            plt.suptitle('Prediction accuracy in batch')
+            plt.xlabel('Trainings')
+            plt.ylabel('Accuracy')
+
         ax.grid()
         ax.legend()
-        plt.suptitle('Average error per item in batch')
-        plt.xlabel('Trainings')
-        plt.ylabel('Error')
         plt.show()
 
     #calculating output
