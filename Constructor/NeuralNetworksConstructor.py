@@ -57,7 +57,7 @@ def d_cross_entropy(output, y):
         d_error.append(output[j]-y[j])
     return np.array(d_error)
 
-class NeuralNetworks:
+class NeuralNetwork:
 
     #сonstructor
     def __init__(self, layers_list, activation, type):
