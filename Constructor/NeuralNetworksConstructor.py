@@ -7,6 +7,8 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 import random
 
+from numpy.core.fromnumeric import shape
+
 #important: I use d_var as the name of derivative, not differential
 
 #normalization function
@@ -47,7 +49,7 @@ def cross_entropy(output, y):
 def d_mse(output, y):
     d_error = []
     for j in range(len(output)):
-        d_error.append(2 * (output[j]-y[j]))
+        d_error.append(output[j]-y[j])
     return np.array(d_error)
 
 #after softmax
@@ -74,6 +76,9 @@ class NeuralNetwork:
         self.train_err_list = []
         self.weights = []
         self.biases = []
+        self.best_weights = []
+        self.best_biases = []
+        self.best_error = 0
         self.activation = activation
         self.type = type
         if type == 'classification':
@@ -95,6 +100,63 @@ class NeuralNetwork:
                     layers_list[i+1], 
                     1) 
                  - 0.5) * 2 * np.sqrt(1/layers_list[i]))
+
+        self.best_weights = self.weights
+        self.best_biases = self.biases
+
+    #file reading
+    def read_weights(self, filename):
+
+        with open(filename, 'r') as file:
+            data = file.read().split('\n')
+
+        arrays = []
+        for item in data:
+            arrays.append(item.split())
+            for j in range(len(arrays[-1])):
+                try:
+                    arrays[-1][j] = float(arrays[-1][j])
+                except Exception:
+                    continue
+
+        count_matrix = -1 #because file starts with a hollow string
+        count_rows = 0
+        #because matrix length is half of the file, 
+        #and other part is taken by biases
+        for i in range(len(arrays) // 2):
+            if arrays[i] == []:
+                count_matrix += 1
+                count_rows = 0
+            else:
+                self.weights[count_matrix][count_rows] = arrays[i]
+                count_rows += 1
+
+        count_biases = -1 #because weights divided from biases with a hollow string
+        count_rows = 0
+        #because matrix length is half of the file, 
+        #and other part is taken by biases
+        for i in range(len(arrays) // 2, len(arrays)):
+            if arrays[i] == []:
+                count_biases += 1
+                count_rows = 0
+            else:
+                self.biases[count_biases][count_rows] = arrays[i]
+                count_rows += 1
+
+    def print_weights(self, filename):
+
+        open(filename, 'w').close()
+
+        for i in range(len(self.weights)):
+            with open(filename, 'ab') as file:
+                file.write(b'\n')
+                np.savetxt(file, self.weights[i])
+        
+        for i in range(len(self.biases)):
+            with open(filename, 'ab') as file:
+                file.write(b'\n')
+                np.savetxt(file, self.biases[i])
+        
         
     #activation
     def __activation__(self, x):
@@ -150,7 +212,7 @@ class NeuralNetwork:
         final_d_t = d_output
         self.d_t.insert(0, final_d_t)
 
-        final_d_b = np.sum(final_d_t, axis=0, keepdims = True)
+        final_d_b = np.sum(final_d_t, axis=0, keepdims=True)
         self.d_biases.insert(0, final_d_b)
 
         final_d_w = self.h[-2].T @ final_d_t
@@ -164,7 +226,7 @@ class NeuralNetwork:
             d_t = self.d_h[0] * self.__d_activation__(self.t[-i-1])
             self.d_t.insert(0, d_t)
 
-            d_b = np.sum(d_t, axis=0, keepdims = True)
+            d_b = np.sum(d_t, axis=0, keepdims=True)
             self.d_biases.insert(0, d_b)
 
             d_w = self.h[-i-2].T @ self.d_t[0]
@@ -222,19 +284,19 @@ class NeuralNetwork:
         self.alpha = alpha
 
         #learning cycle
-        for i in range(epochs):
+        for epochs_counter in range(epochs):
 
             random.shuffle(dataset)
 
-            for j in range(trainings):
+            for training_counter in range(trainings):
 
-                self.current_training = j
+                self.current_training = training_counter
 
                 #input and correct output calculation
                 batch_x, batch_y = zip(
                     *dataset[
-                        j * batch_size : 
-                        j * batch_size 
+                        training_counter * batch_size : 
+                        training_counter * batch_size 
                         + batch_size])
                 input = np.concatenate(batch_x, axis=0)
                 y = []
@@ -248,13 +310,12 @@ class NeuralNetwork:
                 #error calculation and appending to the error list
 
                 #test data calculation
-                
                 if test_dataset is not None:
                     if self.type == 'regression':
                         test_batch_x, test_batch_y = zip(
                             *test_dataset[
-                                j // trainings * len(test_dataset) : 
-                                j // trainings * len(test_dataset) 
+                                training_counter // trainings * len(test_dataset) : 
+                                training_counter // trainings * len(test_dataset) 
                                 + len(test_dataset)])
  
                         test_input = np.concatenate(test_batch_x, axis=0)
@@ -272,9 +333,33 @@ class NeuralNetwork:
                         self.test_err_list.append(
                             err_test / len(test_dataset))
 
+                        #finding lowest error per item in the test batch
+                        #and changing best weights
+                        if epochs_counter == 0 and training_counter == 0:
+                            self.best_error = self.test_err_list[0]
+                        elif self.test_err_list[-1] < self.best_error:
+                            self.best_error = self.test_err_list[-1]
+                            self.best_weights = self.weights
+                            self.best_biases = self.biases
+
                     elif self.type == 'classification':
                         self.test_err_list.append(self.accuracy(test_dataset))
 
+                        #finding best accuracy
+                        #and changing best weights
+                        if epochs_counter == 0 and training_counter == 0:
+                            self.best_error = self.test_err_list[0]
+                        elif self.test_err_list[-1] >= self.best_error:
+                            self.best_error = self.test_err_list[-1]
+                            self.best_weights = self.weights
+                            self.best_biases = self.biases
+                            '''
+                        else:
+                           print('best accuracy: ',
+                                self.best_error,
+                               ', current accuracy: ',
+                              self.test_err_list[-1])
+                           '''
                 #train error calculation and adding 
                 #average error per item in the error list
                 err_train = self.__error__(output, y)
@@ -290,15 +375,19 @@ class NeuralNetwork:
                 self.__update__()
 
     #prediction accuracy calculating
-    def accuracy(self, dataset):
+    def accuracy(self, dataset, mode='last'):
+        
         correct_answers = 0
         for x_test, y_test in dataset:
-            out_test = self.calculate(x_test)
+            if mode == 'last':
+                out_test = self.calculate(x_test)
+            elif mode == 'best':
+                out_test = self.calculate(x_test, mode='best')
             y_pred = np.argmax(out_test)
             if y_pred == np.argmax(y_test):
                 correct_answers += 1
-        return correct_answers / len(dataset)
 
+        return correct_answers / len(dataset)
 
     #determined input test
     def show_determined_test(self, input = None, dataset_i = None):
@@ -366,20 +455,34 @@ class NeuralNetwork:
         plt.show()
 
     #calculating output
-    def calculate(self, input):
+    def calculate(self, input, mode='last'):
 
         temp = np.array(input)
 
-        for i in range(len(self.weights) - 1):
-            temp = self.__activation__(
-                temp @ self.weights[i] 
-                + self.biases[i].T)
+        if mode == 'last':
+            for i in range(len(self.weights) - 1):
+                temp = self.__activation__(
+                    temp @ self.weights[i] 
+                    + self.biases[i].T)
 
-        if self.normalize is not None:
-            output = self.__normalize__(
-                temp @ self.weights[-1] 
-                + self.biases[-1].T)
-        else:
-            output = temp @ self.weights[-1] + self.biases[-1].T
+            if self.normalize is not None:
+                output = self.__normalize__(
+                    temp @ self.weights[-1] 
+                    + self.biases[-1].T)
+            else:
+                output = temp @ self.weights[-1] + self.biases[-1].T
+
+        elif mode == 'best':
+            for i in range(len(self.best_weights) - 1):
+                temp = self.__activation__(
+                    temp @ self.best_weights[i] 
+                    + self.best_biases[i].T)
+
+            if self.normalize is not None:
+                output = self.__normalize__(
+                    temp @ self.best_weights[-1] 
+                    + self.best_biases[-1].T)
+            else:
+                output = temp @ self.best_weights[-1] + self.best_biases[-1].T
 
         return output
