@@ -107,6 +107,7 @@ class NeuralNetwork:
     #file reading
     def read_weights(self, filename):
 
+        #data preprocessing
         with open(filename, 'r') as file:
             data = file.read().split('\n')
 
@@ -267,6 +268,19 @@ class NeuralNetwork:
 
         return output
 
+    def __batch_from_data__(self, dataset, training_counter, batch_size):
+        batch_x, batch_y = zip(
+            *dataset[
+                training_counter * batch_size : 
+                training_counter * batch_size 
+                + batch_size])
+        input = np.concatenate(batch_x, axis=0)
+        y = []
+        for i in batch_y:
+            y.append([i])
+        y = np.array(batch_y)
+        return input, y
+
     #learning
     def train(
         self, 
@@ -293,16 +307,9 @@ class NeuralNetwork:
                 self.current_training = training_counter
 
                 #input and correct output calculation
-                batch_x, batch_y = zip(
-                    *dataset[
-                        training_counter * batch_size : 
-                        training_counter * batch_size 
-                        + batch_size])
-                input = np.concatenate(batch_x, axis=0)
-                y = []
-                for i in batch_y:
-                    y.append([i])
-                y = np.array(batch_y)
+                input, y = self.__batch_from_data__(dataset,
+                                                   training_counter, 
+                                                   batch_size)
 
                 #forward
                 output = self.__train_calculate__(input)
@@ -312,19 +319,13 @@ class NeuralNetwork:
                 #test data calculation
                 if test_dataset is not None:
                     if self.type == 'regression':
-                        test_batch_x, test_batch_y = zip(
-                            *test_dataset[
-                                training_counter // trainings * len(test_dataset) : 
-                                training_counter // trainings * len(test_dataset) 
-                                + len(test_dataset)])
- 
-                        test_input = np.concatenate(test_batch_x, axis=0)
-                        test_y = []
+                        test_input, test_y = self.__batch_from_data__(
+                            test_dataset,
+                            training_counter,
+                            len(test_dataset) // trainings
+                            )
 
-                        for i in test_batch_y:
-                            test_y.append([i])
-                        test_y = np.array(test_batch_y)
-
+                        #forward
                         test_output = self.calculate(test_input)
 
                         #test error calculation and adding 
