@@ -4,6 +4,8 @@ from Constructor import NeuralNetworksConstructor as nnc
 from sklearn import datasets, preprocessing
 import random
 
+#to prove is current model even working
+#based on the toy datasets from sklearn
 def test_iris_classification():
 
     #obtaining dataset
@@ -354,6 +356,7 @@ def test_breast_cancer_classification():
     for i in range(3):
         print()
 
+#saving & reading weights from a txt file
 def test_print_and_read_weights_iris():
 
     #obtaining dataset
@@ -401,6 +404,7 @@ def test_print_and_read_weights_iris():
     #testing our model using test dataset
     print('Copied model accuracy:', model2.accuracy(dataset))
 
+#saving weights with the best results on the test dataset
 def test_best_weights():
 
     #obtaining dataset
@@ -455,3 +459,57 @@ def test_best_weights():
         #print(model.accuracy(dataset) != model.accuracy(dataset, 'best'))
         print(model.best_weights == model.weights)
         model.show_error()
+
+#different batches length, tests: 
+#__batch_from_data__(self, dataset, training_counter, batch_size)
+#based on the digits classification toy dataset from sklearn
+def test_batch_sizes():
+
+    #obtaining dataset
+    classes = 10
+    digits = datasets.load_digits()
+    arr_out = np.eye(classes, dtype=int)
+
+    dataset = [
+        (digits.data[i][None, ...], 
+         arr_out[digits.target[i]]) 
+        for i in range(len(digits.target))]
+    random.shuffle(dataset)
+
+    #using part of the original data to train our neural network
+    dataset_trainings_len = len(dataset) * 90 // 100
+    dataset_training = []
+    for i in range(dataset_trainings_len):
+        dataset_training.append(dataset[i])
+
+    #and other part to test our network
+    test_dataset = []
+    for i in range(dataset_trainings_len, len(dataset)):
+        test_dataset.append(dataset[i])
+
+    #providing some hyperparameters to the network
+    layers = [64, 32, 16, 10]
+    alpha = 0.00003
+
+    for i in range(1, 5):
+        batch_size = i * 64
+        trainings = len(dataset_training) //  batch_size
+        epochs = 100 // trainings
+    
+        #creating and training the model
+        model = nnc.NeuralNetwork(layers, 'tanh', 'classification')
+        model.train(
+            alpha, 
+            trainings, 
+            epochs, 
+            batch_size, 
+            dataset_training, 
+            test_dataset)
+
+        #testing our model using test dataset
+        model.show_determined_test(dataset_i = test_dataset[i])
+        print()
+
+        model.show_error()
+
+#
