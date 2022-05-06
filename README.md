@@ -54,8 +54,11 @@ dataset for training and dataset for testing
 which you prepared at the first step.
 ```
 
-## After training you may like to see the results. 
-## For this I created a couple of pretty nice methods.
+## Methods
+
+After training you may like to see the results. 
+
+For this I created a couple of pretty nice methods.
 
 ```
 calculate(input, mode='last'): 
