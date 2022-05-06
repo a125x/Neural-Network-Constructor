@@ -42,6 +42,14 @@ type:
 ```
 based on the task which you want to solve.
 
+And after you can build a model:
+
+```
+from Constructor import NeuralNetworksConstructor as nnc
+
+model = nnc.NeuralNetwork(layers, activation function, type)
+```
+
 Next, for training you have to 
 provide hyperparameters for the training, such as:
 
@@ -53,8 +61,19 @@ amount of epochs (positive integer), batch size (positive integer),
 dataset for training and dataset for testing 
 which you prepared at the first step.
 ```
+And you can train your model like this:
 
-## Methods
+```
+model.train(
+        alpha, 
+        trainings, 
+        epochs, 
+        batch_size, 
+        dataset = None, 
+        test_dataset = None)
+```
+
+## Methods of providing information
 
 After training you may like to see the results. 
 
@@ -84,4 +103,21 @@ showing error/accuracy during trainings.
 show_determined_test(input = None, dataset_i = None):
 
 showing correct result based on the provided dataset item.
+```
+
+## Saving methods
+
+```
+print_weights(filename):
+
+printing weidhts and biases in the txt file, firstly 
+weights, secondary biases using standart nympy savetxt function
+with rewriting previous data in this file
+```
+
+```
+read_weights(filename):
+
+setting weights & biases to those which written in the file 
+previously by the print_weights method
 ```
