@@ -9,7 +9,7 @@ And this project: https://github.com/dkorobchenko-nv/nn-python
 
 
 
-##So... How to use it?
+## So... How to use it?
 
 
 First of all, you should prepare the train and test dataset. 
@@ -54,8 +54,8 @@ dataset for training and dataset for testing
 which you prepared at the first step.
 ```
 
-##After training you may like to see the results. 
-##For this I created a couple of pretty nice methods.
+## After training you may like to see the results. 
+## For this I created a couple of pretty nice methods.
 
 ```
 calculate(input, mode='last'): 
