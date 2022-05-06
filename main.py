@@ -11,6 +11,6 @@ import Tests.NeuralNetworksTests as tests
 
 #tests.test_print_and_read_weights_iris()
 
-#tests.test_best_weights()
+tests.test_best_weights()
 
-tests.test_batch_sizes()
+#tests.test_batch_sizes()
