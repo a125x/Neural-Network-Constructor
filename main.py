@@ -9,8 +9,8 @@ import Tests.NeuralNetworksTests as tests
 #tests.test_wine_classification()
 #tests.test_breast_cancer_classification()
 
-#tests.test_print_and_read_weights_iris()
+tests.test_print_and_read_weights()
 
-tests.test_best_weights()
+#tests.test_best_weights()
 
 #tests.test_batch_sizes()

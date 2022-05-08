@@ -65,7 +65,6 @@ class NeuralNetwork:
     def __init__(self, layers_list, activation, type):
 
         self.alpha = 0
-        self.current_training = 0
         self.d_weights = []
         self.d_biases = []
         self.d_t = []
@@ -101,8 +100,8 @@ class NeuralNetwork:
                     1) 
                  - 0.5) * 2 * np.sqrt(1/layers_list[i]))
 
-        self.best_weights = self.weights
-        self.best_biases = self.biases
+        self.best_weights = self.weights.copy()
+        self.best_biases = self.biases.copy()
 
     #file reading
     def read_weights(self, filename):
@@ -120,6 +119,8 @@ class NeuralNetwork:
                 except Exception:
                     continue
 
+        print(arrays)
+
         count_matrix = -1 #because file starts with a hollow string
         count_rows = 0
         #because matrix length is half of the file, 
@@ -132,11 +133,13 @@ class NeuralNetwork:
                 self.weights[count_matrix][count_rows] = arrays[i]
                 count_rows += 1
 
+        print(self.weights)
+
         count_biases = -1 #because weights divided from biases with a hollow string
         count_rows = 0
         #because matrix length is half of the file, 
         #and other part is taken by biases
-        for i in range(len(arrays) // 2, len(arrays)):
+        for i in range(len(arrays) + 1 // 2, len(arrays)):
             if arrays[i] == []:
                 count_biases += 1
                 count_rows = 0
@@ -144,20 +147,28 @@ class NeuralNetwork:
                 self.biases[count_biases][count_rows] = arrays[i]
                 count_rows += 1
 
-    def print_weights(self, filename):
+        print(self.biases)
+
+    #printing weights data in the txt file
+    def print_weights(self, filename, mode='last'):
 
         open(filename, 'w').close()
 
         for i in range(len(self.weights)):
             with open(filename, 'ab') as file:
                 file.write(b'\n')
-                np.savetxt(file, self.weights[i])
+                if mode == 'last':
+                    np.savetxt(file, self.weights[i])
+                elif mode == 'best':
+                    np.savetxt(file, self.best_weights[i])
         
         for i in range(len(self.biases)):
             with open(filename, 'ab') as file:
                 file.write(b'\n')
-                np.savetxt(file, self.biases[i])
-        
+                if mode == 'last':
+                    np.savetxt(file, self.biases[i])
+                elif mode == 'best':
+                    np.savetxt(file, self.best_biases[i])
         
     #activation
     def __activation__(self, x):
@@ -281,6 +292,42 @@ class NeuralNetwork:
         y = np.array(batch_y)
         return input, y
 
+    def __best_weights_calculation__(self, epochs_counter, training_counter):
+
+        if epochs_counter == 0 and training_counter == 0:
+
+            self.best_error = self.test_err_list[0]
+
+        elif (self.test_err_list[-1] < self.best_error and 
+              self.type == 'regression' or 
+              self.test_err_list[-1] > self.best_error and 
+              self.type == 'classification'):
+
+            self.best_error = self.test_err_list[-1]
+            self.best_weights = self.weights.copy()
+            self.best_biases = self.biases.copy()
+
+    def __test_error_calculation__(self, test_dataset, trainings, training_counter):
+
+        if self.type == 'regression':
+            test_input, test_y = self.__batch_from_data__(
+                test_dataset,
+                training_counter,
+                len(test_dataset) // trainings
+                )
+
+            #forward
+            test_output = self.calculate(test_input)
+
+            #test error calculation and adding 
+            #average error per item in the error list
+            err_test = self.__error__(test_output, test_y)
+            self.test_err_list.append(
+                err_test / len(test_dataset))
+
+        elif self.type == 'classification':
+            self.test_err_list.append(self.accuracy(test_dataset))
+
     #learning
     def train(
         self, 
@@ -288,103 +335,61 @@ class NeuralNetwork:
         trainings, 
         epochs, 
         batch_size, 
-        dataset = None, 
-        test_dataset = None):
-
-        #refreshing
+        dataset, 
+        test_dataset
+        ):
+        
         self.__train_refreshing__()
-
-        #initializing
         self.alpha = alpha
-
-        #learning cycle
+        
         for epochs_counter in range(epochs):
 
             random.shuffle(dataset)
 
             for training_counter in range(trainings):
-
-                self.current_training = training_counter
-
-                #input and correct output calculation
-                input, y = self.__batch_from_data__(dataset,
-                                                   training_counter, 
-                                                   batch_size)
-
-                #forward
+                
+                input, y = self.__batch_from_data__(dataset, 
+                                                    training_counter, 
+                                                    batch_size)
+                
                 output = self.__train_calculate__(input)
     
                 #error calculation and appending to the error list
+                #on the test data
+                self.__test_error_calculation__(test_dataset, 
+                                                trainings, 
+                                                training_counter)
 
-                #test data calculation
-                if test_dataset is not None:
-                    if self.type == 'regression':
-                        test_input, test_y = self.__batch_from_data__(
-                            test_dataset,
-                            training_counter,
-                            len(test_dataset) // trainings
-                            )
-
-                        #forward
-                        test_output = self.calculate(test_input)
-
-                        #test error calculation and adding 
-                        #average error per item in the error list
-                        err_test = self.__error__(test_output, test_y)
-                        self.test_err_list.append(
-                            err_test / len(test_dataset))
-
-                        #finding lowest error per item in the test batch
-                        #and changing best weights
-                        if epochs_counter == 0 and training_counter == 0:
-                            self.best_error = self.test_err_list[0]
-                        elif self.test_err_list[-1] < self.best_error:
-                            self.best_error = self.test_err_list[-1]
-                            self.best_weights = self.weights
-                            self.best_biases = self.biases
-
-                    elif self.type == 'classification':
-                        self.test_err_list.append(self.accuracy(test_dataset))
-
-                        #finding best accuracy
-                        #and changing best weights
-                        if epochs_counter == 0 and training_counter == 0:
-                            self.best_error = self.test_err_list[0]
-                        elif self.test_err_list[-1] >= self.best_error:
-                            self.best_error = self.test_err_list[-1]
-                            self.best_weights = self.weights
-                            self.best_biases = self.biases
-                            '''
-                        else:
-                           print('best accuracy: ',
-                                self.best_error,
-                               ', current accuracy: ',
-                              self.test_err_list[-1])
-                           '''
-                #train error calculation and adding 
-                #average error per item in the error list
+                #finding lowest error per item in the test batch
+                #and changing best weights
+                self.__best_weights_calculation__(epochs_counter, 
+                                                  training_counter)
+                
                 err_train = self.__error__(output, y)
+
+                #adding average error per item in the error list
                 if self.type == 'regression':
                     self.train_err_list.append(err_train / len(dataset))
                 elif self.type == 'classification':
                     self.train_err_list.append(self.accuracy(dataset))
-
-                #backward
+                    
                 self.__backward__(output, y, err_train)
-
-                #update
+                
                 self.__update__()
 
     #prediction accuracy calculating
     def accuracy(self, dataset, mode='last'):
         
         correct_answers = 0
+
         for x_test, y_test in dataset:
+
             if mode == 'last':
                 out_test = self.calculate(x_test)
             elif mode == 'best':
                 out_test = self.calculate(x_test, mode='best')
             y_pred = np.argmax(out_test)
+
             if y_pred == np.argmax(y_test):
                 correct_answers += 1
 
