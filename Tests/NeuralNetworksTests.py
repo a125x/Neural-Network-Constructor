@@ -419,7 +419,7 @@ def test_print_and_read_weights():
     model2.read_weights('Weights-Data\data.txt')
 
     #testing our model using test dataset
-    print('Copied model accuracy:', model2.accuracy(test_dataset))
+    print('Copied model best accuracy:', model2.accuracy(test_dataset))
 
 #saving weights with the best results on the test dataset
 def test_best_weights():

@@ -119,35 +119,33 @@ class NeuralNetwork:
                 except Exception:
                     continue
 
-        print(arrays)
+        count_array = 0
+        for i in self.weights:
+            count_array += len(i)
+            count_array += 1
 
         count_matrix = -1 #because file starts with a hollow string
         count_rows = 0
-        #because matrix length is half of the file, 
-        #and other part is taken by biases
-        for i in range(len(arrays) // 2):
+        
+        for i in range(count_array):
             if arrays[i] == []:
                 count_matrix += 1
                 count_rows = 0
             else:
                 self.weights[count_matrix][count_rows] = arrays[i]
                 count_rows += 1
-
-        print(self.weights)
-
+                
         count_biases = -1 #because weights divided from biases with a hollow string
         count_rows = 0
         #because matrix length is half of the file, 
         #and other part is taken by biases
-        for i in range(len(arrays) + 1 // 2, len(arrays)):
+        for i in range(count_array, len(arrays)):
             if arrays[i] == []:
                 count_biases += 1
                 count_rows = 0
             else:
                 self.biases[count_biases][count_rows] = arrays[i]
                 count_rows += 1
-
-        print(self.biases)
 
     #printing weights data in the txt file
     def print_weights(self, filename, mode='last'):
