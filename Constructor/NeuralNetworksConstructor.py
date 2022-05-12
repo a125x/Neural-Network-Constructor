@@ -52,7 +52,7 @@ def d_mse(output, y):
         d_error.append(output[j]-y[j])
     return np.array(d_error)
 
-#after softmax
+#after softmax, and it's basically the same thing as d_mse
 def d_cross_entropy(output, y):
     d_error = []
     for j in range(len(output)):
@@ -168,7 +168,6 @@ class NeuralNetwork:
                 elif mode == 'best':
                     np.savetxt(file, self.best_biases[i])
         
-    #activation
     def __activation__(self, x):
         if self.activation == 'relu':
             return relu(x)
@@ -198,11 +197,6 @@ class NeuralNetwork:
         elif self.loss == 'cross entropy':
             return d_cross_entropy(output, y)
 
-    #normalize
-    def __normalize__(self, x):
-        if self.normalize == 'softmax':
-            return softmax(x)
-
     #functions for training
     def __train_refreshing__(self):
         self.d_weights.clear()
@@ -212,7 +206,7 @@ class NeuralNetwork:
         self.train_err_list = []
         self.test_err_list = []
 
-    def __backward__(self, output, y, err):
+    def __backward__(self, output, y):
 
         d_output = self.__d_error_d_output__(output, y)
 
@@ -247,8 +241,9 @@ class NeuralNetwork:
             self.weights[i] = self.weights[i] - self.d_weights[i] * self.alpha
             self.biases[i] = self.biases[i] - self.d_biases[i].T * self.alpha
 
-    #calculating output with providing optional parameters: list of t and h
-    def __train_calculate__(self, input):
+    #calculating output with providing optional parameters: 
+    #list of t and h
+    def __learn_calculate__(self, input):
 
         temp = np.array(input)
         self.t.clear()
@@ -257,18 +252,15 @@ class NeuralNetwork:
         self.h.append(input)
 
         for i in range(len(self.weights) - 1):
-            self.t.append(
-                temp @ self.weights[i] 
-                + self.biases[i].T)
-            temp = self.__activation__(
-                temp @ self.weights[i] 
-                + self.biases[i].T)
+            self.t.append(temp @ self.weights[i] + 
+                          self.biases[i].T)
+            temp = self.__activation__(temp @ self.weights[i] + 
+                                       self.biases[i].T)
             self.h.append(temp)
 
         if self.normalize is not None:
-            output = self.__normalize__(
-                temp @ self.weights[-1] 
-                + self.biases[-1].T)
+            output = softmax(temp @ self.weights[-1] + 
+                             self.biases[-1].T)
         else:
             output = temp @ self.weights[-1] + self.biases[-1].T
 
@@ -277,20 +269,30 @@ class NeuralNetwork:
 
         return output
 
-    def __batch_from_data__(self, dataset, training_counter, batch_size):
+    def __batch_from_data__(
+        self, 
+        dataset, 
+        training_counter, 
+        batch_size):
+
         batch_x, batch_y = zip(
-            *dataset[
-                training_counter * batch_size : 
-                training_counter * batch_size 
-                + batch_size])
+            *dataset[training_counter * batch_size : 
+                     training_counter * batch_size + batch_size]
+            )
+
         input = np.concatenate(batch_x, axis=0)
+
         y = []
         for i in batch_y:
             y.append([i])
         y = np.array(batch_y)
+
         return input, y
 
-    def __best_weights_calculation__(self, epochs_counter, training_counter):
+    def __best_weights_change__(
+        self, 
+        epochs_counter, 
+        training_counter):
 
         if epochs_counter == 0 and training_counter == 0:
 
@@ -305,7 +307,11 @@ class NeuralNetwork:
             self.best_weights = self.weights.copy()
             self.best_biases = self.biases.copy()
 
-    def __test_error_calculation__(self, test_dataset, trainings, training_counter):
+    def __test_error_calculation__(
+        self, 
+        test_dataset, 
+        trainings, 
+        training_counter):
 
         if self.type == 'regression':
             test_input, test_y = self.__batch_from_data__(
@@ -325,6 +331,31 @@ class NeuralNetwork:
 
         elif self.type == 'classification':
             self.test_err_list.append(self.accuracy(test_dataset))
+  
+    def __learn__(
+        self, 
+        dataset,  
+        training_counter, 
+        batch_size):
+
+        input, y = self.__batch_from_data__(dataset, 
+                                            training_counter, 
+                                            batch_size)
+                
+        output = self.__learn_calculate__(input)
+
+        error = self.__error__(output, y)
+
+        #adding average error per item/accuracy in the error list
+        if self.type == 'regression':
+            self.train_err_list.append(error / len(dataset))
+        elif self.type == 'classification':
+            self.train_err_list.append(self.accuracy(dataset))
+                    
+        self.__backward__(output, y)
+        
+        #updating weights after backpropagation
+        self.__update__()
 
     #learning
     def train(
@@ -333,7 +364,7 @@ class NeuralNetwork:
         trainings, 
         epochs, 
         batch_size, 
-        dataset, 
+        train_dataset, 
         test_dataset
         ):
         
@@ -342,38 +373,25 @@ class NeuralNetwork:
         
         for epochs_counter in range(epochs):
 
-            random.shuffle(dataset)
+            random.shuffle(train_dataset)
 
             for training_counter in range(trainings):
+
+                #error calculation, appending to the train error 
+                #list and backpropagation
+                self.__learn__(train_dataset, 
+                               training_counter, 
+                               batch_size)
                 
-                input, y = self.__batch_from_data__(dataset, 
-                                                    training_counter, 
-                                                    batch_size)
-                
-                output = self.__train_calculate__(input)
-    
-                #error calculation and appending to the error list
-                #on the test data
+                #error calculation, appending to the test error list
                 self.__test_error_calculation__(test_dataset, 
-                                                trainings, 
-                                                training_counter)
+                                    trainings, 
+                                    training_counter)
 
                 #finding lowest error per item in the test batch
                 #and changing best weights
-                self.__best_weights_calculation__(epochs_counter, 
-                                                  training_counter)
-                
-                err_train = self.__error__(output, y)
-
-                #adding average error per item in the error list
-                if self.type == 'regression':
-                    self.train_err_list.append(err_train / len(dataset))
-                elif self.type == 'classification':
-                    self.train_err_list.append(self.accuracy(dataset))
-                    
-                self.__backward__(output, y, err_train)
-                
-                self.__update__()
+                self.__best_weights_change__(epochs_counter, 
+                                      training_counter)
 
     #prediction accuracy calculating
     def accuracy(self, dataset, mode='last'):
@@ -440,7 +458,11 @@ class NeuralNetwork:
 
     #average error
     def show_error(self):
+
         fig, ax = plt.subplots()
+
+        #in case of regression showing error plot, in case of 
+        #classification showing accuracy plot
         if self.type == 'regression':
             ax.plot(self.train_err_list, label='Train error')
             ax.plot(self.test_err_list, label='Test error')
@@ -470,9 +492,8 @@ class NeuralNetwork:
                     + self.biases[i].T)
 
             if self.normalize is not None:
-                output = self.__normalize__(
-                    temp @ self.weights[-1] 
-                    + self.biases[-1].T)
+                output = softmax(temp @ self.weights[-1] + 
+                                 self.biases[-1].T)
             else:
                 output = temp @ self.weights[-1] + self.biases[-1].T
 
@@ -483,9 +504,8 @@ class NeuralNetwork:
                     + self.best_biases[i].T)
 
             if self.normalize is not None:
-                output = self.__normalize__(
-                    temp @ self.best_weights[-1] 
-                    + self.best_biases[-1].T)
+                output = softmax(temp @ self.best_weights[-1] + 
+                                 self.best_biases[-1].T)
             else:
                 output = temp @ self.best_weights[-1] + self.best_biases[-1].T
 

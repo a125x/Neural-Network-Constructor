@@ -3,9 +3,26 @@ I mastered methods of creating and training neural networks,
 and in the process created a constructor that allows you to work
 with multilayer perceptrons.
 
-This project based on my previous work: https://github.com/A125X/A-Simple-Neural-Networl
+Final goal of the project is to allow user to create a basic neural 
+networks, train them and use them. Networks must be used for 
+classification or regression, user also can choose from different 
+activation functions but only one for the whole network and the 
+last layer's activation function is determinied by network's 
+purpose. User also can choose hyperparameters for training and
+shape of the whole network, but it shouldn't be too large, because 
+constructor is not optimized and using mostly basic python.
 
-And this project: https://github.com/dkorobchenko-nv/nn-python
+Also constructor have some features such as saving weights which 
+performed the best on the test data during trainings and saving 
+weights and biases data in the text file and reading them into, 
+well, network's weights itself. And of course constructor have a 
+lot of functions to check the results of user's training.
+
+This project based on my previous work: 
+https://github.com/A125X/A-Simple-Neural-Networl
+
+And this project: 
+https://github.com/dkorobchenko-nv/nn-python
 
 
 
