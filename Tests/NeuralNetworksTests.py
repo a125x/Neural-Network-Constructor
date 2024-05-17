@@ -1,4 +1,3 @@
-import pytest
 import numpy as np
 from Constructor import NeuralNetworksConstructor as nnc
 from sklearn import datasets, preprocessing
